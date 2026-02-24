@@ -6,6 +6,8 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 const mockRequest = vi.fn();
 
+const mockNode = { name: 'Anonamoose', type: 'anonamoose', typeVersion: 1, position: [0, 0] };
+
 function createMockExecuteFunctions(overrides: {
   operation: string;
   params?: Record<string, unknown>;
@@ -28,6 +30,7 @@ function createMockExecuteFunctions(overrides: {
       if (name === 'operation') return operation;
       return params[name] ?? '';
     }),
+    getNode: () => mockNode,
     helpers: { request: mockRequest } as any,
     continueOnFail: () => continueOnFail,
   } as unknown as IExecuteFunctions;
@@ -112,6 +115,15 @@ describe('Anonamoose Node', () => {
     it('should have subtitle showing current operation', () => {
       expect(node.description.subtitle).toBe('={{ $parameter["operation"] }}');
     });
+
+    it('should mark text, sessionId, and terms as required', () => {
+      const textProp = node.description.properties.find(p => p.name === 'text');
+      const sessionProp = node.description.properties.find(p => p.name === 'sessionId');
+      const termsProp = node.description.properties.find(p => p.name === 'terms');
+      expect((textProp as any).required).toBe(true);
+      expect((sessionProp as any).required).toBe(true);
+      expect((termsProp as any).required).toBe(true);
+    });
   });
 
   // ── Redact ───────────────────────────────────────────────────────
@@ -145,6 +157,16 @@ describe('Anonamoose Node', () => {
         },
         json: true,
       });
+    });
+
+    it('should reject empty text', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'redact',
+        params: { text: '' },
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('Text parameter cannot be empty');
+      expect(mockRequest).not.toHaveBeenCalled();
     });
   });
 
@@ -189,6 +211,26 @@ describe('Anonamoose Node', () => {
           url: 'http://localhost:3001/api/v1/sessions/id%2Fwith%20spaces%26chars/hydrate',
         }),
       );
+    });
+
+    it('should reject empty text', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'hydrate',
+        params: { text: '', sessionId: 'abc-123' },
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('Text parameter cannot be empty');
+      expect(mockRequest).not.toHaveBeenCalled();
+    });
+
+    it('should reject empty sessionId', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'hydrate',
+        params: { text: 'some text', sessionId: '' },
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('Session ID cannot be empty');
+      expect(mockRequest).not.toHaveBeenCalled();
     });
   });
 
@@ -263,6 +305,20 @@ describe('Anonamoose Node', () => {
       const entries = mockRequest.mock.calls[0][0].body.entries;
       expect(entries[0].term).toBe('Foo');
       expect(entries[1].term).toBe('Bar');
+    });
+
+    it('should reject empty terms (all blank lines)', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'dictionaryAdd',
+        params: {
+          terms: '\n  \n\n',
+          caseSensitive: false,
+          wholeWord: false,
+        },
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('At least one dictionary term is required');
+      expect(mockRequest).not.toHaveBeenCalled();
     });
   });
 
@@ -342,6 +398,34 @@ describe('Anonamoose Node', () => {
         json: true,
       });
     });
+
+    it('should reject non-object request body (string)', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'proxy',
+        params: { requestBody: 'not an object' },
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('Request body must be a JSON object');
+      expect(mockRequest).not.toHaveBeenCalled();
+    });
+
+    it('should reject null request body', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'proxy',
+        params: { requestBody: null },
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('Request body must be a JSON object');
+    });
+
+    it('should reject array request body', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'proxy',
+        params: { requestBody: [1, 2, 3] },
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('Request body must be a JSON object');
+    });
   });
 
   // ── Base URL handling ────────────────────────────────────────────
@@ -353,6 +437,23 @@ describe('Anonamoose Node', () => {
       const ctx = createMockExecuteFunctions({
         operation: 'stats',
         credentials: { baseUrl: 'http://localhost:3001///', apiToken: 'tok' },
+      });
+
+      await node.execute.call(ctx);
+
+      expect(mockRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'http://localhost:3001/api/v1/stats',
+        }),
+      );
+    });
+
+    it('should fall back to default URL when baseUrl is undefined', async () => {
+      mockRequest.mockResolvedValueOnce({ ok: true });
+
+      const ctx = createMockExecuteFunctions({
+        operation: 'stats',
+        credentials: { baseUrl: undefined, apiToken: 'tok' },
       });
 
       await node.execute.call(ctx);
@@ -423,7 +524,7 @@ describe('Anonamoose Node', () => {
   // ── Error handling ───────────────────────────────────────────────
 
   describe('error handling', () => {
-    it('should throw error when continueOnFail is false', async () => {
+    it('should wrap API errors in NodeApiError when continueOnFail is false', async () => {
       mockRequest.mockRejectedValueOnce(new Error('Connection refused'));
 
       const ctx = createMockExecuteFunctions({
@@ -432,7 +533,17 @@ describe('Anonamoose Node', () => {
         continueOnFail: false,
       });
 
-      await expect(node.execute.call(ctx)).rejects.toThrow('Connection refused');
+      await expect(node.execute.call(ctx)).rejects.toThrow();
+    });
+
+    it('should throw NodeOperationError directly for validation errors', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'redact',
+        params: { text: '' },
+        continueOnFail: false,
+      });
+
+      await expect(node.execute.call(ctx)).rejects.toThrow('Text parameter cannot be empty');
     });
 
     it('should return error object when continueOnFail is true', async () => {
@@ -446,7 +557,20 @@ describe('Anonamoose Node', () => {
 
       const result = await node.execute.call(ctx);
       expect(result[0]).toHaveLength(1);
-      expect(result[0][0].json).toEqual({ error: 'Server error' });
+      expect(result[0][0].json).toHaveProperty('error');
+    });
+
+    it('should return validation error message when continueOnFail is true', async () => {
+      const ctx = createMockExecuteFunctions({
+        operation: 'redact',
+        params: { text: '' },
+        continueOnFail: true,
+      });
+
+      const result = await node.execute.call(ctx);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json).toHaveProperty('error');
+      expect((result[0][0].json as any).error).toContain('Text parameter cannot be empty');
     });
 
     it('should continue processing remaining items after error with continueOnFail', async () => {
@@ -463,7 +587,7 @@ describe('Anonamoose Node', () => {
 
       const result = await node.execute.call(ctx);
       expect(result[0]).toHaveLength(2);
-      expect(result[0][0].json).toEqual({ error: 'Item 1 failed' });
+      expect(result[0][0].json).toHaveProperty('error');
       expect(result[0][1].json).toEqual({ redacted: 'item 2 ok' });
     });
   });

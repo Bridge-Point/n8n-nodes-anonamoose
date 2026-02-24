@@ -18,7 +18,7 @@
     "type": "git",
     "url": "https://github.com/Bridge-Point/n8n-nodes-anonamoose.git"
   },
-  "main": "index.js",
+  "main": "dist/nodes/Anonamoose/Anonamoose.node.js",
   "scripts": {
     "build": "tsc && gulp build:icons",
     "dev": "tsc --watch",

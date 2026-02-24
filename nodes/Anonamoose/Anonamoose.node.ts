@@ -4,6 +4,8 @@ import {
   INodeType,
   INodeTypeDescription,
   IDataObject,
+  NodeOperationError,
+  NodeApiError,
 } from 'n8n-workflow';
 
 export class Anonamoose implements INodeType {
@@ -82,6 +84,7 @@ export class Anonamoose implements INodeType {
           },
         },
         default: '',
+        required: true,
         description: 'The text to redact or hydrate',
       },
       {
@@ -94,6 +97,7 @@ export class Anonamoose implements INodeType {
           },
         },
         default: '',
+        required: true,
         placeholder: 'session-123',
         description: 'The session ID for rehydration',
       },
@@ -110,6 +114,7 @@ export class Anonamoose implements INodeType {
           rows: 4,
         },
         default: '',
+        required: true,
         placeholder: 'Project Apollo\nJohn Smith\nACME Corp',
         description: 'One term per line',
       },
@@ -145,7 +150,7 @@ export class Anonamoose implements INodeType {
           },
         },
         default: '{}',
-        description: 'JSON body to send to the proxy',
+        description: 'JSON body to send to the proxy (must be an object with "model" and "messages")',
       },
     ],
   };
@@ -155,7 +160,7 @@ export class Anonamoose implements INodeType {
     const returnData: INodeExecutionData[] = [];
 
     const credentials = await this.getCredentials('anonamooseApi');
-    const baseUrl = (credentials.baseUrl as string).replace(/\/+$/, '');
+    const baseUrl = ((credentials.baseUrl as string) || 'http://localhost:3001').replace(/\/+$/, '');
     const apiToken = credentials.apiToken as string;
 
     const headers: Record<string, string> = {
@@ -173,6 +178,9 @@ export class Anonamoose implements INodeType {
         switch (operation) {
           case 'redact': {
             const text = this.getNodeParameter('text', i) as string;
+            if (!text) {
+              throw new NodeOperationError(this.getNode(), 'Text parameter cannot be empty', { itemIndex: i });
+            }
             const response = await this.helpers.request({
               method: 'POST',
               url: `${baseUrl}/api/v1/redact`,
@@ -187,6 +195,12 @@ export class Anonamoose implements INodeType {
           case 'hydrate': {
             const text = this.getNodeParameter('text', i) as string;
             const sessionId = this.getNodeParameter('sessionId', i) as string;
+            if (!text) {
+              throw new NodeOperationError(this.getNode(), 'Text parameter cannot be empty', { itemIndex: i });
+            }
+            if (!sessionId) {
+              throw new NodeOperationError(this.getNode(), 'Session ID cannot be empty', { itemIndex: i });
+            }
             const response = await this.helpers.request({
               method: 'POST',
               url: `${baseUrl}/api/v1/sessions/${encodeURIComponent(sessionId)}/hydrate`,
@@ -209,6 +223,10 @@ export class Anonamoose implements INodeType {
               wholeWord,
               enabled: true,
             }));
+
+            if (entries.length === 0) {
+              throw new NodeOperationError(this.getNode(), 'At least one dictionary term is required', { itemIndex: i });
+            }
 
             const response = await this.helpers.request({
               method: 'POST',
@@ -244,7 +262,10 @@ export class Anonamoose implements INodeType {
           }
 
           case 'proxy': {
-            const requestBody = this.getNodeParameter('requestBody', i) as object;
+            const requestBody = this.getNodeParameter('requestBody', i);
+            if (typeof requestBody !== 'object' || requestBody === null || Array.isArray(requestBody)) {
+              throw new NodeOperationError(this.getNode(), 'Request body must be a JSON object', { itemIndex: i });
+            }
             const response = await this.helpers.request({
               method: 'POST',
               url: `${baseUrl}/v1/chat/completions`,
@@ -266,7 +287,11 @@ export class Anonamoose implements INodeType {
         if (this.continueOnFail()) {
           returnData.push({ json: { error: (error as Error).message } });
         } else {
-          throw error;
+          if (error instanceof NodeOperationError) {
+            throw error;
+          }
+          const err = error as Error;
+          throw new NodeApiError(this.getNode(), { message: err.message } as any, { message: err.message });
         }
       }
     }
