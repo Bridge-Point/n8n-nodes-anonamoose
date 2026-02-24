@@ -1,0 +1,51 @@
+{
+  "name": "n8n-nodes-anonamoose",
+  "version": "0.1.0",
+  "description": "n8n community node for Anonamoose PII redaction proxy",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "anonamoose",
+    "pii",
+    "redaction",
+    "anonymization",
+    "llm",
+    "privacy"
+  ],
+  "license": "BUSL-1.1",
+  "homepage": "https://github.com/Bridge-Point/n8n-nodes-anonamoose",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bridge-Point/n8n-nodes-anonamoose.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && gulp build:icons",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build",
+    "lint": "tsc --noEmit"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/AnonamooseApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Anonamoose/Anonamoose.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "gulp": "^5.0.0",
+    "n8n-core": "^1.122.15",
+    "n8n-workflow": "^2.9.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "n8n-core": ">=1",
+    "n8n-workflow": ">=2"
+  }
+}
