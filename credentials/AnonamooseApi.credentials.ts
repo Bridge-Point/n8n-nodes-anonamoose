@@ -8,7 +8,7 @@ import type {
 export class AnonamooseApi implements ICredentialType {
 	name = 'anonamooseApi';
 	displayName = 'Anonamoose API';
-	documentationUrl = 'https://github.com/nickkemp/anonamoose';
+	documentationUrl = 'https://github.com/Bridge-Point/anonamoose';
 
 	properties: INodeProperties[] = [
 		{

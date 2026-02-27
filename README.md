@@ -1,6 +1,10 @@
 # n8n-nodes-anonamoose
 
-n8n community node for [Anonamoose](https://github.com/nickkemp/anonamoose) — detect and redact PII from text using a four-layer redaction pipeline (Dictionary, NER, Regex, Names).
+n8n community node for [Anonamoose](https://github.com/Bridge-Point/anonamoose) — detect and redact PII from text using a four-layer redaction pipeline (Dictionary, NER, Regex, Names).
+
+## Compatibility
+
+Requires n8n version 1.0 or later.
 
 ## Installation
 
@@ -8,14 +12,14 @@ In your n8n instance:
 
 1. Go to **Settings > Community Nodes**
 2. Click **Install a community node**
-3. Enter `n8n-nodes-anonamoose`
+3. Enter `@bridge-point/n8n-nodes-anonamoose`
 4. Click **Install**
 
 Or via CLI:
 
 ```bash
 cd ~/.n8n
-npm install n8n-nodes-anonamoose
+npm install @bridge-point/n8n-nodes-anonamoose
 ```
 
 ## Prerequisites
@@ -29,16 +33,18 @@ A running Anonamoose instance with `API_TOKEN` configured.
 | **Base URL** | URL of your Anonamoose instance (default: `http://localhost:3000`) |
 | **API Token** | Bearer token matching the `API_TOKEN` env var on your server |
 
-## Node: Anonamoose
+## Operations
 
-Sends text to the `/api/v1/redact` endpoint and returns the redacted text, a session ID, and detection details.
+### Redact
+
+Detect and replace PII with tokens.
 
 **Parameters:**
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | **Text** | Yes | The text to scan and redact |
-| **Locale** | No | Restrict regex patterns to AU, NZ, UK, or US |
+| **Locale** | No | Restrict regex patterns to AU, NZ, UK, or US (default: server default) |
 
 **Output:**
 
@@ -52,7 +58,50 @@ Sends text to the `/api/v1/redact` endpoint and returns the redacted text, a ses
 }
 ```
 
-This node is also usable as an AI tool in n8n agent workflows.
+### Rehydrate
+
+Restore original values using a session ID from a previous redact operation.
+
+**Parameters:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Text** | Yes | The redacted text to rehydrate |
+| **Session ID** | Yes | The session ID returned by a previous redact operation |
+
+**Output:**
+
+```json
+{
+  "text": "Call John Smith at john@example.com"
+}
+```
+
+### Dictionary Add
+
+Add terms for guaranteed redaction. Any term added to the dictionary will always be redacted, regardless of whether the NER or regex layers would have caught it.
+
+**Parameters:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Terms** | Yes | Terms to add, one per line |
+| **Case Sensitive** | No | Whether matching should be case-sensitive (default: false) |
+| **Whole Word** | No | Whether to match whole words only (default: false) |
+
+### Dictionary Delete
+
+Remove terms from the dictionary by name. Matching is case-insensitive.
+
+**Parameters:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Terms** | Yes | Terms to delete, one per line |
+
+## AI Tool Usage
+
+This node is usable as an AI tool in n8n agent workflows. All four operations are available when the node is used as a tool.
 
 ## License
 

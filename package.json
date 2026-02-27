@@ -1,9 +1,9 @@
 {
-	"name": "n8n-nodes-anonamoose",
+	"name": "@bridge-point/n8n-nodes-anonamoose",
 	"version": "0.1.0",
 	"description": "n8n community node for Anonamoose — PII redaction for LLM workflows",
 	"license": "MIT",
-	"homepage": "https://github.com/nickkemp/n8n-nodes-anonamoose",
+	"homepage": "https://github.com/Bridge-Point/n8n-nodes-anonamoose",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
@@ -17,7 +17,10 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/nickkemp/n8n-nodes-anonamoose.git"
+		"url": "https://github.com/Bridge-Point/n8n-nodes-anonamoose.git"
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"scripts": {
 		"build": "tsc && gulp build:icons",
