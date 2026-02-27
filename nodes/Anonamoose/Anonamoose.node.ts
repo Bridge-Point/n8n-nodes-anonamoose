@@ -1,10 +1,11 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 export class Anonamoose implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,8 +19,8 @@ export class Anonamoose implements INodeType {
 		defaults: {
 			name: 'Anonamoose',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -112,13 +113,13 @@ export class Anonamoose implements INodeType {
 				});
 
 				returnData.push({
-					json: response as Record<string, unknown>,
+					json: response as IDataObject,
 					pairedItem: { item: i },
 				});
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
-						json: { error: (error as Error).message },
+						json: { error: (error as Error).message } as IDataObject,
 						pairedItem: { item: i },
 					});
 					continue;

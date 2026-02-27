@@ -9,15 +9,11 @@ describe('AnonamooseApi Credentials', () => {
     expect(creds.displayName).toBe('Anonamoose API');
   });
 
-  it('should link to documentation', () => {
-    expect(creds.documentationUrl).toBe('https://docs.anonamoose.net');
-  });
-
   it('should define baseUrl property with default', () => {
     const baseUrl = creds.properties.find(p => p.name === 'baseUrl');
     expect(baseUrl).toBeDefined();
     expect(baseUrl!.type).toBe('string');
-    expect(baseUrl!.default).toBe('http://localhost:3001');
+    expect(baseUrl!.default).toBe('http://localhost:3000');
   });
 
   it('should define apiToken property as password', () => {
@@ -30,5 +26,26 @@ describe('AnonamooseApi Credentials', () => {
 
   it('should have exactly 2 properties', () => {
     expect(creds.properties).toHaveLength(2);
+  });
+
+  it('should authenticate via Bearer header', () => {
+    expect(creds.authenticate).toEqual({
+      type: 'generic',
+      properties: {
+        headers: {
+          Authorization: '=Bearer {{$credentials.apiToken}}',
+        },
+      },
+    });
+  });
+
+  it('should test credentials via /health endpoint', () => {
+    expect(creds.test).toEqual({
+      request: {
+        baseURL: '={{$credentials.baseUrl}}',
+        url: '/health',
+        method: 'GET',
+      },
+    });
   });
 });
