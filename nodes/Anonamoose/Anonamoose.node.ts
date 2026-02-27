@@ -1,301 +1,132 @@
-import {
-  IExecuteFunctions,
-  INodeExecutionData,
-  INodeType,
-  INodeTypeDescription,
-  IDataObject,
-  NodeOperationError,
-  NodeApiError,
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export class Anonamoose implements INodeType {
-  description: INodeTypeDescription = {
-    displayName: 'Anonamoose',
-    name: 'anonamoose',
-    icon: 'file:anonamoose.svg',
-    group: ['transform'],
-    version: 1,
-    subtitle: '={{ $parameter["operation"] }}',
-    description: 'Redact and rehydrate PII from LLM interactions',
-    defaults: {
-      name: 'Anonamoose',
-    },
-    credentials: [
-      {
-        name: 'anonamooseApi',
-        required: true,
-      },
-    ],
-    inputs: ['main'],
-    outputs: ['main'],
-    properties: [
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        options: [
-          {
-            name: 'Redact Text',
-            value: 'redact',
-            description: 'Redact PII from text',
-            action: 'Redact PII from text',
-          },
-          {
-            name: 'Hydrate Text',
-            value: 'hydrate',
-            description: 'Restore redacted text to original',
-            action: 'Restore redacted text to original',
-          },
-          {
-            name: 'Add Dictionary Entry',
-            value: 'dictionaryAdd',
-            description: 'Add terms to guaranteed redaction dictionary',
-            action: 'Add terms to dictionary',
-          },
-          {
-            name: 'List Dictionary',
-            value: 'dictionaryList',
-            description: 'List all dictionary entries',
-            action: 'List all dictionary entries',
-          },
-          {
-            name: 'Proxy Request',
-            value: 'proxy',
-            description: 'Forward request through anonymization proxy',
-            action: 'Forward request through proxy',
-          },
-          {
-            name: 'Get Stats',
-            value: 'stats',
-            description: 'Get redaction statistics',
-            action: 'Get redaction statistics',
-          },
-        ],
-        default: 'redact',
-      },
-      {
-        displayName: 'Text',
-        name: 'text',
-        type: 'string',
-        displayOptions: {
-          show: {
-            operation: ['redact', 'hydrate'],
-          },
-        },
-        default: '',
-        required: true,
-        description: 'The text to redact or hydrate',
-      },
-      {
-        displayName: 'Session ID',
-        name: 'sessionId',
-        type: 'string',
-        displayOptions: {
-          show: {
-            operation: ['hydrate'],
-          },
-        },
-        default: '',
-        required: true,
-        placeholder: 'session-123',
-        description: 'The session ID for rehydration',
-      },
-      {
-        displayName: 'Dictionary Terms',
-        name: 'terms',
-        type: 'string',
-        displayOptions: {
-          show: {
-            operation: ['dictionaryAdd'],
-          },
-        },
-        typeOptions: {
-          rows: 4,
-        },
-        default: '',
-        required: true,
-        placeholder: 'Project Apollo\nJohn Smith\nACME Corp',
-        description: 'One term per line',
-      },
-      {
-        displayName: 'Case Sensitive',
-        name: 'caseSensitive',
-        type: 'boolean',
-        displayOptions: {
-          show: {
-            operation: ['dictionaryAdd'],
-          },
-        },
-        default: false,
-      },
-      {
-        displayName: 'Whole Word Only',
-        name: 'wholeWord',
-        type: 'boolean',
-        displayOptions: {
-          show: {
-            operation: ['dictionaryAdd'],
-          },
-        },
-        default: false,
-      },
-      {
-        displayName: 'Request Body (JSON)',
-        name: 'requestBody',
-        type: 'json',
-        displayOptions: {
-          show: {
-            operation: ['proxy'],
-          },
-        },
-        default: '{}',
-        description: 'JSON body to send to the proxy (must be an object with "model" and "messages")',
-      },
-    ],
-  };
+	description: INodeTypeDescription = {
+		displayName: 'Anonamoose',
+		name: 'anonamoose',
+		icon: 'file:anonamoose.svg',
+		group: ['transform'],
+		version: 1,
+		subtitle: 'Redact PII from text',
+		description: 'Detect and redact personally identifiable information using Anonamoose',
+		defaults: {
+			name: 'Anonamoose',
+		},
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		credentials: [
+			{
+				name: 'anonamooseApi',
+				required: true,
+			},
+		],
+		properties: [
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				typeOptions: {
+					rows: 4,
+				},
+				default: '',
+				required: true,
+				description: 'The text to scan for PII and redact',
+				placeholder: 'e.g. Call John Smith at john@example.com',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Locale',
+						name: 'locale',
+						type: 'options',
+						default: '',
+						description: 'Restrict regex patterns to a specific locale. Leave empty to use the server default.',
+						options: [
+							{
+								name: 'Server Default',
+								value: '',
+							},
+							{
+								name: 'Australia',
+								value: 'AU',
+							},
+							{
+								name: 'New Zealand',
+								value: 'NZ',
+							},
+							{
+								name: 'United Kingdom',
+								value: 'UK',
+							},
+							{
+								name: 'United States',
+								value: 'US',
+							},
+						],
+					},
+				],
+			},
+		],
+	};
 
-  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    const items = this.getInputData();
-    const returnData: INodeExecutionData[] = [];
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
 
-    const credentials = await this.getCredentials('anonamooseApi');
-    const baseUrl = ((credentials.baseUrl as string) || 'http://localhost:3001').replace(/\/+$/, '');
-    const apiToken = credentials.apiToken as string;
+		const credentials = await this.getCredentials('anonamooseApi');
+		const baseUrl = (credentials.baseUrl as string).replace(/\/+$/, '');
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (apiToken) {
-      headers['Authorization'] = `Bearer ${apiToken}`;
-    }
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const text = this.getNodeParameter('text', i) as string;
+				const options = this.getNodeParameter('options', i) as {
+					locale?: string;
+				};
 
-    for (let i = 0; i < items.length; i++) {
-      try {
-        const operation = this.getNodeParameter('operation', i) as string;
-        let result: IDataObject = {};
+				const body: Record<string, string> = { text };
+				if (options.locale) {
+					body.locale = options.locale;
+				}
 
-        switch (operation) {
-          case 'redact': {
-            const text = this.getNodeParameter('text', i) as string;
-            if (!text) {
-              throw new NodeOperationError(this.getNode(), 'Text parameter cannot be empty', { itemIndex: i });
-            }
-            const response = await this.helpers.request({
-              method: 'POST',
-              url: `${baseUrl}/api/v1/redact`,
-              body: { text },
-              headers,
-              json: true,
-            });
-            result = response as IDataObject;
-            break;
-          }
+				const response = await this.helpers.httpRequest({
+					method: 'POST',
+					url: `${baseUrl}/api/v1/redact`,
+					headers: {
+						Authorization: `Bearer ${credentials.apiToken}`,
+						'Content-Type': 'application/json',
+					},
+					body,
+					json: true,
+				});
 
-          case 'hydrate': {
-            const text = this.getNodeParameter('text', i) as string;
-            const sessionId = this.getNodeParameter('sessionId', i) as string;
-            if (!text) {
-              throw new NodeOperationError(this.getNode(), 'Text parameter cannot be empty', { itemIndex: i });
-            }
-            if (!sessionId) {
-              throw new NodeOperationError(this.getNode(), 'Session ID cannot be empty', { itemIndex: i });
-            }
-            const response = await this.helpers.request({
-              method: 'POST',
-              url: `${baseUrl}/api/v1/sessions/${encodeURIComponent(sessionId)}/hydrate`,
-              body: { text },
-              headers,
-              json: true,
-            });
-            result = response as IDataObject;
-            break;
-          }
+				returnData.push({
+					json: response as Record<string, unknown>,
+					pairedItem: { item: i },
+				});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: (error as Error).message },
+						pairedItem: { item: i },
+					});
+					continue;
+				}
+				throw error;
+			}
+		}
 
-          case 'dictionaryAdd': {
-            const terms = this.getNodeParameter('terms', i) as string;
-            const caseSensitive = this.getNodeParameter('caseSensitive', i) as boolean;
-            const wholeWord = this.getNodeParameter('wholeWord', i) as boolean;
-
-            const entries = terms.split('\n').filter(t => t.trim()).map(term => ({
-              term: term.trim(),
-              caseSensitive,
-              wholeWord,
-              enabled: true,
-            }));
-
-            if (entries.length === 0) {
-              throw new NodeOperationError(this.getNode(), 'At least one dictionary term is required', { itemIndex: i });
-            }
-
-            const response = await this.helpers.request({
-              method: 'POST',
-              url: `${baseUrl}/api/v1/dictionary`,
-              body: { entries },
-              headers,
-              json: true,
-            });
-            result = response as IDataObject;
-            break;
-          }
-
-          case 'dictionaryList': {
-            const response = await this.helpers.request({
-              method: 'GET',
-              url: `${baseUrl}/api/v1/dictionary`,
-              headers,
-              json: true,
-            });
-            result = response as IDataObject;
-            break;
-          }
-
-          case 'stats': {
-            const response = await this.helpers.request({
-              method: 'GET',
-              url: `${baseUrl}/api/v1/stats`,
-              headers,
-              json: true,
-            });
-            result = response as IDataObject;
-            break;
-          }
-
-          case 'proxy': {
-            const requestBody = this.getNodeParameter('requestBody', i);
-            if (typeof requestBody !== 'object' || requestBody === null || Array.isArray(requestBody)) {
-              throw new NodeOperationError(this.getNode(), 'Request body must be a JSON object', { itemIndex: i });
-            }
-            const response = await this.helpers.request({
-              method: 'POST',
-              url: `${baseUrl}/v1/chat/completions`,
-              body: requestBody,
-              headers: {
-                ...headers,
-                'x-anonamoose-redact': 'true',
-                'x-anonamoose-hydrate': 'true',
-              },
-              json: true,
-            });
-            result = response as IDataObject;
-            break;
-          }
-        }
-
-        returnData.push({ json: result });
-      } catch (error) {
-        if (this.continueOnFail()) {
-          returnData.push({ json: { error: (error as Error).message } });
-        } else {
-          if (error instanceof NodeOperationError) {
-            throw error;
-          }
-          const err = error as Error;
-          throw new NodeApiError(this.getNode(), { message: err.message } as any, { message: err.message });
-        }
-      }
-    }
-
-    return [returnData];
-  }
+		return [returnData];
+	}
 }

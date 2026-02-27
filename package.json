@@ -1,55 +1,50 @@
 {
-  "name": "n8n-nodes-anonamoose",
-  "version": "0.1.0",
-  "description": "n8n community node for Anonamoose PII redaction proxy",
-  "keywords": [
-    "n8n-community-node-package",
-    "n8n",
-    "anonamoose",
-    "pii",
-    "redaction",
-    "anonymization",
-    "llm",
-    "privacy"
-  ],
-  "license": "BUSL-1.1",
-  "homepage": "https://github.com/Bridge-Point/n8n-nodes-anonamoose",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Bridge-Point/n8n-nodes-anonamoose.git"
-  },
-  "main": "dist/nodes/Anonamoose/Anonamoose.node.js",
-  "scripts": {
-    "build": "tsc && gulp build:icons",
-    "dev": "tsc --watch",
-    "prepublishOnly": "npm run build",
-    "lint": "tsc --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
-  },
-  "files": [
-    "dist"
-  ],
-  "n8n": {
-    "n8nNodesApiVersion": 1,
-    "credentials": [
-      "dist/credentials/AnonamooseApi.credentials.js"
-    ],
-    "nodes": [
-      "dist/nodes/Anonamoose/Anonamoose.node.js"
-    ]
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.6",
-    "@vitest/coverage-v8": "^4.0.18",
-    "gulp": "^5.0.0",
-    "n8n-core": "^1.122.15",
-    "n8n-workflow": "^2.9.0",
-    "typescript": "^5.3.3",
-    "vitest": "^4.0.18"
-  },
-  "peerDependencies": {
-    "n8n-core": ">=1",
-    "n8n-workflow": ">=2"
-  }
+	"name": "n8n-nodes-anonamoose",
+	"version": "0.1.0",
+	"description": "n8n community node for Anonamoose — PII redaction for LLM workflows",
+	"license": "MIT",
+	"homepage": "https://github.com/nickkemp/n8n-nodes-anonamoose",
+	"keywords": [
+		"n8n-community-node-package",
+		"n8n",
+		"pii",
+		"redaction",
+		"privacy",
+		"anonamoose"
+	],
+	"author": {
+		"name": "Nick Kemp"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nickkemp/n8n-nodes-anonamoose.git"
+	},
+	"scripts": {
+		"build": "tsc && gulp build:icons",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"prepublishOnly": "npm run build"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"credentials": [
+			"dist/credentials/AnonamooseApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Anonamoose/Anonamoose.node.js"
+		]
+	},
+	"devDependencies": {
+		"gulp": "^5.0.0",
+		"n8n-workflow": "*",
+		"typescript": "~5.7.0"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
 }
