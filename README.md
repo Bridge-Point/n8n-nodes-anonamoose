@@ -12,14 +12,14 @@ In your n8n instance:
 
 1. Go to **Settings > Community Nodes**
 2. Click **Install a community node**
-3. Enter `@bridge-point/n8n-nodes-anonamoose`
+3. Enter `@bridgepoint/n8n-nodes-anonamoose`
 4. Click **Install**
 
 Or via CLI:
 
 ```bash
 cd ~/.n8n
-npm install @bridge-point/n8n-nodes-anonamoose
+npm install @bridgepoint/n8n-nodes-anonamoose
 ```
 
 ## Prerequisites

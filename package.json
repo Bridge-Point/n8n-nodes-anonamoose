@@ -1,5 +1,5 @@
 {
-	"name": "@bridge-point/n8n-nodes-anonamoose",
+	"name": "@bridgepoint/n8n-nodes-anonamoose",
 	"version": "0.1.0",
 	"description": "n8n community node for Anonamoose — PII redaction for LLM workflows",
 	"license": "MIT",
